@@ -5459,6 +5459,13 @@ elem* callfunc(Loc loc,
         tf = t.nextOf().isTypeFunction();
         assert(tf);
 
+        if (irs.nullDerefCheck() && ec.Eoper != OPvar)
+        {
+            Symbol* stmp = symbol_genauto(type_fake(ec.Ety));
+            eside = el_bin(OPeq, ec.Ety, el_var(stmp), ec);
+            ec = el_var(stmp);
+        }
+
         ethis = ec;
         ec = el_same(ethis);
         ethis = el_una(target.isX86_64 || target.isAArch64 ? OP128_64 : OP64_32, TYnptr, ethis); // get this
@@ -5472,7 +5479,6 @@ elem* callfunc(Loc loc,
         else
             tym = totym(tf);
 
-        version(none)
         if (irs.nullDerefCheck())
         {
             // You cannot check for ethis being null, lazy parameters can have it be null.
@@ -5676,7 +5682,7 @@ elem* callfunc(Loc loc,
             !irs.Cfile)     // C11 leaves evaluation order implementation-defined, but
                             // try to match evaluation order of other C compilers
         {
-            eside = fixArgumentEvaluationOrder(elems);
+            eside = el_combine(fixArgumentEvaluationOrder(elems), eside);
         }
 
         foreach (ref e; elems)
