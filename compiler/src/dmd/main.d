@@ -661,14 +661,25 @@ private int tryMain(const(char)[][] argv, out Param params)
     if (global.errors)
         removeHdrFilesAndFail(params, modules);
 
-    // Scan for functions to inline
+    // Scan for modules with always inline functions
     foreach (m; modules)
     {
-        if (params.useInline || m.hasAlwaysInlines)
+        if (m.hasAlwaysInlines)
         {
             if (params.v.verbose)
-                message("inline scan %s", m.toChars());
-            inlineScanModule(m, global.errorSink);
+                message("inline1 %s", m.toChars());
+            inlineScanAlwaysInline(m, global.errorSink);
+        }
+    }
+
+    if (params.useInline)
+    {
+        // Scan for functions to inline
+        foreach (m; modules)
+        {
+            if (params.v.verbose)
+                message("inline2 %s", m.toChars());
+            inlineScanAllFunctions(m, global.errorSink);
         }
     }
 

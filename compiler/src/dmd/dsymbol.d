@@ -175,8 +175,8 @@ enum PASS : ubyte
     semantic2done,  // semantic2() done
     semantic3,      // semantic3() started
     semantic3done,  // semantic3() done
-    inline,         // inline started
-    inlinedone,     // inline done
+    inline1,        // inline pass 1 (always inline)
+    inline2,        // inline pass 2 (all functions)
     obj,            // toObjFile() run
 }
 
