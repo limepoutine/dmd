@@ -1867,28 +1867,32 @@ private bool canInline(FuncDeclaration fd, bool hasThis, bool statementsToo, PAS
     if (fd.skipCodegen)
         return false;
 
-    // Ignore ILS if the decision was made in another pass
-    if (fd.semanticRun == pass)
+    // Reset ILS if the decision was made in another pass
+    if (fd.semanticRun != pass)
     {
-        ILS inlineStatus = statementsToo ? fd.inlineStatusStmt : fd.inlineStatusExp;
+        fd.inlineStatusExp = ILS.uninitialized;
+        fd.inlineStatusStmt = ILS.uninitialized;
+        fd.semanticRun = pass;
+    }
 
-        final switch (inlineStatus)
+    ILS inlineStatus = statementsToo ? fd.inlineStatusStmt : fd.inlineStatusExp;
+
+    final switch (inlineStatus)
+    {
+    case ILS.yes:
+        static if (CANINLINE_LOG)
         {
-        case ILS.yes:
-            static if (CANINLINE_LOG)
-            {
-                printf("\t1: yes %s\n", fd.toChars());
-            }
-            return true;
-        case ILS.no:
-            static if (CANINLINE_LOG)
-            {
-                printf("\t1: no %s\n", fd.toChars());
-            }
-            return false;
-        case ILS.uninitialized:
-            break;
+            printf("\t1: yes %s\n", fd.toChars());
         }
+        return true;
+    case ILS.no:
+        static if (CANINLINE_LOG)
+        {
+            printf("\t1: no %s\n", fd.toChars());
+        }
+        return false;
+    case ILS.uninitialized:
+        break;
     }
 
     final switch (fd.inlining)
