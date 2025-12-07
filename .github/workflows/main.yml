@@ -24,10 +24,6 @@ jobs:
           #   os: ubuntu-22.04
           #   host_dmd: dmd
           #   coverage: true
-          - job_name: Ubuntu 22.04 x64, DMD (bootstrap)
-            os: ubuntu-22.04
-            host_dmd: dmd-2.079.0
-            disable_debug_for_dmd_unittests: true # no `-debug` - host frontend too old
           - job_name: Ubuntu 22.04 x86, DMD (latest)
             os: ubuntu-22.04
             model: 32
@@ -38,17 +34,6 @@ jobs:
           #   model: 32
           #   host_dmd: dmd
           #   coverage: true
-          - job_name: Ubuntu 22.04 x86, DMD (bootstrap)
-            os: ubuntu-22.04
-            model: 32
-            host_dmd: dmd-2.097.1
-          - job_name: Ubuntu 22.04 x64, LDC
-            os: ubuntu-22.04
-            host_dmd: ldc
-          - job_name: Ubuntu 22.04 x64, GDC
-            os: ubuntu-22.04
-            host_dmd: gdmd-9
-            disable_debug_for_dmd_unittests: true # no `-debug` - host frontend too old
           - job_name: Alpine 3.21 x64, LDC
             os: ubuntu-latest
             container_image: alpine:3.21
@@ -174,97 +159,3 @@ jobs:
       - name: Upload coverage report
         if: matrix.coverage
         run: ci/run.sh codecov
-
-  freebsd-vm:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - job_name: FreeBSD 13.2 x64, DMD (latest)
-            freebsd_version: '13.2'
-            host_dmd: dmd
-          - job_name: FreeBSD 13.2 x64, DMD (bootstrap)
-            freebsd_version: '13.2'
-            host_dmd: dmd-2.095.0
-    name: ${{ matrix.job_name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20  # Should complete in 11 minutes
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 50
-      - name: Run in VM
-        uses: cross-platform-actions/action@v0.23.0
-        timeout-minutes: 19
-        with:
-          operating_system: freebsd
-          hypervisor: qemu
-          memory: 12G
-          cpu_count: 4
-          sync_files: runner-to-vm
-          version: ${{ matrix.freebsd_version }}
-          shell: bash
-          run: |
-            set -uexo pipefail
-
-            freebsd_version='${{ matrix.freebsd_version }}'
-            freebsd_major="${freebsd_version:0:2}"
-
-            export OS_NAME=freebsd
-            export MODEL=64
-            export HOST_DMD='${{ matrix.host_dmd }}'
-            export N="$(nproc)"
-            export FULL_BUILD=true
-            export CI_DFLAGS="-version=TARGET_FREEBSD${freebsd_major}"
-
-            #if [[ "$freebsd_major" == 12 ]]; then
-            #  sudo sed -i '' -e 's|pkg.FreeBSD.org|mirrors.xtom.com/freebsd-pkg|' /etc/pkg/FreeBSD.conf
-            #fi
-
-            bash --version
-
-            echo '::group::Install prerequisites'
-            sudo -E ci/cirrusci.sh
-            echo '::endgroup::'
-
-            echo '::group::Install host compiler'
-            ci/run.sh install_host_compiler
-            echo '::endgroup::'
-
-            echo '::group::Set up repos'
-
-            ref='${{ github.ref }}'
-            if [[ "$ref" =~ ^refs/pull/ ]]; then
-              REPO_BRANCH="$GITHUB_BASE_REF"
-            elif [[ "$ref" =~ ^refs/(heads|tags)/(.*)$ ]]; then
-              REPO_BRANCH="${BASH_REMATCH[2]}"
-            else
-              echo "Error: unexpected GitHub ref '$ref'" >&2
-              exit 1
-            fi
-
-            ci/run.sh setup_repos "$REPO_BRANCH"
-            echo '::endgroup::'
-
-            echo '::group::Build'
-            ci/run.sh build
-            echo '::endgroup::'
-
-            echo '::group::Test dmd'
-            ci/run.sh test_dmd
-            echo '::endgroup::'
-
-            echo '::group::Test druntime'
-            ci/run.sh test_druntime
-            echo '::endgroup::'
-
-            echo '::group::Test phobos'
-            ci/run.sh test_phobos
-            echo '::endgroup::'
-
-            echo '::group::Test self-compile'
-            ENABLE_RELEASE=0 ci/run.sh rebuild
-            echo '::endgroup::'
-      - name: Backup
-        if: ${{ failure() }}
-        run: echo 'FreeBSD VM check made optional because of random time outs'

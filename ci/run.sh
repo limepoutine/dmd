@@ -200,13 +200,7 @@ setup_repos() {
     local branch="$1"
     for proj in phobos; do
         if [ ! -d ../$proj ]; then
-            if [ $branch != master ] && [ $branch != stable ] &&
-                   ! git ls-remote --exit-code --heads https://github.com/dlang/$proj.git $branch > /dev/null; then
-                # use master as fallback for other repos to test feature branches
-                clone https://github.com/dlang/$proj.git ../$proj master
-            else
-                clone https://github.com/dlang/$proj.git ../$proj $branch
-            fi
+            clone https://github.com/limepoutine/$proj.git ../$proj master
         fi
     done
 }
